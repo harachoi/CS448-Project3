@@ -108,7 +108,7 @@ class LockTable2 {
       while (it.hasNext()) {
          LockEntry entry = it.next();
          if (entry.transaction.equals(transaction)) {
-            it.remove();
+            it.remove(); // prevent ConcurrentModificationException
             if (locks.get(blk).size() == 0) {
                // no other transaction waiting
                locks.remove(blk);

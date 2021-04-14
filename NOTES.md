@@ -69,16 +69,57 @@ private static final long MAX_TIME = 10000; // 10 seconds
 - one transaction performs read on all data in relation
 - multiple writes on different data items (random or in order?)
 - expected behavior of the detection & prevention methods
-  - setup
+  - setup 1
     - t: tuples
     - T1 read sequentially (i.e t1,t2,t3,...,ti,...,tn)
-    - T2 writes in order, but not every tuple (e.g. t1,t5,t6,...,ti,...tm)
+      - lock-S, read, lock-S, read, ..., unlock, unlock, ...
+    - T2, T3, T4,..., Tm: writes to a tuple
+      - lock-X, write, unlock
+    - TS(T1) < TS(other)
+  - timeout
+    - T1 reaches ti
+      - if T2 is writing ti, T1 waits
+      - if T2 is takes longer than `MAX_TIME`, T1 rolls back
+    - T2 is writing ti
+      - if T1 is still reading, T2 waits
+    - worse case: T1 keeps rolling back
+      - time: m * T(read)
+    - average case: T1 rolls back some of the time
+      - time: m * T(read), but less than worse case
+    - best case: all read finishes before T1 reaches it
+      - time: T(read all)
   - wait-die
-    - T2 reaches ti first: if T1 reaches ti while T2 is writing, T1 waits
-    - T1 reaches ti first: if T2 reaches ti while T1 is reading, T2 dies
+    - T1 reaches ti
+      - if T2 is writing ti, T1 waits
+    - T2 writes ti
+      - if T1 is still reading, T2 dies
+    - worse case: serial, T1 waits on all write
+      - time: T(read all) + m * T(write)
+    - average case: some write completes, while some wait for T1 to finish reading
+      - time: T(read all) + m / 2 * T(write)
+    - best case: all write finishes before T1 needs to access those date items
+      - time: T(read all)
   - wound-wait
-    - T2 reaches ti first: if T1 reaches ti while T2 is writing, the writing fails
-    - T1 reaches ti first: if T2 reaches ti while 
+    - T1 reaches ti
+      - if T2 is writing ti, rollback T2
+    - T2 writes ti
+      - if T1 is still reading, T2 waits
+    - same as wait-die?
+  - wait-for graph
+    - no deadlocks
+    - worst case: T1 waits on every write
+    - average case: T1 waits on some writes
+    - best case: all writes finish before T1 could reach them  
+    - time: (n + m) * overhead + T(operation)
+      - (n + m) * overhead: for each operation, there is overhead for cycle detection and managing the graph
+      - if the cycle detection is done every k operations, this is reduced to ceil(1/k * (n + m)) * overhead
+      - also need to include the time for the operation
+    - might be slower than wait-die/wound-wait because of overhead?
+  - tree protocol
+    - time: T(inital overhead) + (n + m) * overhead + T(operation)
+    - T(initial overhead): time needed to build tree
+    - (n + m) * overhead: time needed to check for validity of lock request
+  
 
 ## Implementation plan
 
