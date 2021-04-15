@@ -6,6 +6,9 @@ import simpledb.buffer.*;
 import simpledb.tx.recovery.*;
 import simpledb.tx.concurrency.ConcurrencyMgr;
 
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
 /**
  * Provide transaction management for clients,
  * ensuring that all transactions are serializable, recoverable,
@@ -13,6 +16,8 @@ import simpledb.tx.concurrency.ConcurrencyMgr;
  * @author Edward Sciore
  */
 public class Transaction {
+   public static boolean VERBOSE = false;
+
    private static int nextTxNum = 0;
    private static final int END_OF_FILE = -1;
    private RecoveryMgr    recoveryMgr;
@@ -23,6 +28,10 @@ public class Transaction {
    private BufferList mybuffers;
 
    private long timestamp;
+   public long rollbackTime = -1;
+
+   private Thread thread;
+   private Consumer<Transaction>  task;
    
    /**
     * Create a new transaction and its associated 
@@ -43,7 +52,22 @@ public class Transaction {
       mybuffers = new BufferList(bm);
       this.timestamp = System.currentTimeMillis();
    }
-   
+
+   public void setThread(Thread thread) {
+      this.thread = thread;
+   }
+   public Thread getThread() {
+      return this.thread;
+   }
+
+   public void setTask(Consumer<Transaction> task) {
+      this.task = task;
+   }
+
+   public void runTask() {
+      this.task.accept(this);
+   }
+
    /**
     * Commit the current transaction.
     * Flush all modified buffers (and their log records),
@@ -52,11 +76,17 @@ public class Transaction {
     */
    public void commit() {
       recoveryMgr.commit();
-      System.out.println("transaction " + txnum + " committed");
+      if (VERBOSE)
+         System.out.println("transaction " + txnum + " committed");
       concurMgr.release(this);
       mybuffers.unpinAll();
    }
-   
+
+   public void abort() throws InterruptedException {
+      rollbackTime = System.currentTimeMillis();
+      throw new InterruptedException();
+   }
+
    /**
     * Rollback the current transaction.
     * Undo any modified values,
@@ -66,7 +96,8 @@ public class Transaction {
     */
    public void rollback() {
       recoveryMgr.rollback();
-      System.out.println("transaction " + txnum + " rolled back");
+      if (VERBOSE)
+         System.out.println("transaction " + txnum + " rolled back");
       concurMgr.release(this);
       mybuffers.unpinAll();
    }

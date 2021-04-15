@@ -145,7 +145,7 @@ private static final long MAX_TIME = 10000; // 10 seconds
   - not a lot of data items, might run every insert
   - run every x inserts to reduce overhead
 
-### tree protocol
+### tree protocol 
 - can only use X-locks
 - obtain data items needed
 - build tree (how to build?)
@@ -159,4 +159,4 @@ private static final long MAX_TIME = 10000; // 10 seconds
   - first lock can be on any item
   - Q can be locked only if Q’s parent is locked
   - Data item may be unlock at any time
-  - Cannot relock (since the test follow 2PL, this cannot happen)
+  - Cannot relock
