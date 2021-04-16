@@ -3,6 +3,8 @@
 - Implements figure 18.7 (schedule 2) in the textbook
 - enforces order by using `Thread.sleep()`
 - when deadlock is detected, roll back
+- how to run:
+  - change `ConcurrencyMgr.locktbl = new LockTableWaitDie();` on line 23 to the approach you want to use
 
 ## Changed the lock table implementation
 - made it abstract
