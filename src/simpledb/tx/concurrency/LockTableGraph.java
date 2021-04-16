@@ -3,6 +3,7 @@ package simpledb.tx.concurrency;
 import simpledb.tx.Transaction;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class LockTableGraph extends LockTable {
     static class WaitForGraph {
@@ -54,13 +55,15 @@ public class LockTableGraph extends LockTable {
         waitForGraph.waitFor(waiting, holding);
         List<Transaction> cycle = waitForGraph.detectCycle();
         if (cycle != null) {
-            // abort the youngest transaction
-//            Transaction youngest = Collections.min(cycle, Comparator.comparingLong(o -> o.rollbackTime));
-//            youngest.abort();
-//            if (youngest.equals(waiting)) {
-//                return;
-//            }
-            waiting.abort();
+            // abort the youngest transaction that has not been aborted yet
+            // if all of the transactions in the cycle has been rolled back, choose the youngest one
+            Transaction victim;
+            List<Transaction> notAborted = cycle.stream().filter(t -> t.rollbackTime < 0).collect(Collectors.toList());
+            if (notAborted.size() == 0)
+                victim = Collections.max(cycle, Comparator.comparingLong(o -> o.getTimestamp()));
+            else
+                victim = Collections.max(notAborted, Comparator.comparingLong(o -> o.getTimestamp()));
+            victim.abort();
             return;
         }
         wait();

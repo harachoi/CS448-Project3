@@ -1,5 +1,9 @@
 # Notes
 - search for `?` for undecided implementation plan
+- please help adding on to "Ideas for part 1"
+  - I already did one, so please work together to come up with another one
+  - need to include the best and worst case time for each approach
+  - tree protocol can be ignored, it is not implemented yet
 
 ## useful files
 - `ConcurrencyTest.java`
@@ -64,7 +68,6 @@ private static final long MAX_TIME = 10000; // 10 seconds
 - max wait time
 
 ## Ideas for part 1
-
 ### Reading relation with concurrent writes
 - one transaction performs read on all data in relation
 - multiple writes on different data items (random or in order?)
@@ -149,7 +152,7 @@ private static final long MAX_TIME = 10000; // 10 seconds
 - can only use X-locks
 - obtain data items needed
 - build tree (how to build?)
-  - plan 1: random build
+  - plan 1: random build (does not work, how to search? currently implemented)
     - shuffle data item array D = {d1, d2, d3,...}
     - d1 is root
     - choose # children and add to d1

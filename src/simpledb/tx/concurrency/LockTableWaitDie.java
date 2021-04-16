@@ -15,7 +15,7 @@ public class LockTableWaitDie extends LockTable {
             wait();
         } else {
             // waiting younger
-            throw new InterruptedException();
+            waiting.abort();
         }
     }
 
