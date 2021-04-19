@@ -3,7 +3,7 @@ package simpledb.tx.concurrency;
 import simpledb.tx.Transaction;
 
 public class LockTableTimeout extends LockTable {
-    private static long MAX_TIME = 5000; // 5 seconds
+    public static long MAX_TIME = 5000; // 5 seconds
 
     @Override
     void initialize(Object... dataItems) {
