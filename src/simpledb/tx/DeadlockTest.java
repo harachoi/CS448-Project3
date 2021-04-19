@@ -20,7 +20,7 @@ public class DeadlockTest {
         fm = db.fileMgr();
         lm = db.logMgr();
         bm = db.bufferMgr();
-        ConcurrencyMgr.locktbl = new LockTableWaitDie();
+        ConcurrencyMgr.locktbl = new LockTableWoundWait();
         new Thread(new T1()).start();
         new Thread(new T2()).start();
     }

@@ -71,6 +71,12 @@ public class FileMgr {
       }
    }
 
+   public void closeAll() throws IOException {
+      for (Map.Entry<String, RandomAccessFile> kvp : openFiles.entrySet()) {
+         kvp.getValue().close();
+      }
+   }
+
    public boolean isNew() {
       return isNew;
    }
