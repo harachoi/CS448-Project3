@@ -3,6 +3,7 @@ package simpledb.tx;
 import simpledb.file.*;
 import simpledb.log.LogMgr;
 import simpledb.buffer.*;
+import simpledb.tx.concurrency.LockAbortException;
 import simpledb.tx.recovery.*;
 import simpledb.tx.concurrency.ConcurrencyMgr;
 
@@ -24,7 +25,7 @@ public class Transaction {
    private ConcurrencyMgr concurMgr;
    private BufferMgr bm;
    private FileMgr fm;
-   private int txnum;
+   public int txnum;
    private BufferList mybuffers;
 
    private long timestamp;
@@ -75,6 +76,8 @@ public class Transaction {
     * release all locks, and unpin any pinned buffers.
     */
    public void commit() {
+      if (Thread.currentThread().isInterrupted())
+         throw new LockAbortException();
       recoveryMgr.commit();
       if (VERBOSE)
          System.out.println("transaction " + txnum + " committed");
@@ -82,9 +85,14 @@ public class Transaction {
       mybuffers.unpinAll();
    }
 
-   public void abort() throws InterruptedException {
+   public void abort() {
       rollbackTime = System.currentTimeMillis();
-      throw new InterruptedException();
+      this.thread.interrupt();
+   }
+
+   public void releaseAll() {
+      concurMgr.release(this);
+      mybuffers.unpinAll();
    }
 
    /**
@@ -240,6 +248,9 @@ public class Transaction {
       return fm.append(filename);
    }
 
+   public void setTimestamp(long timestamp) {
+      this.timestamp = timestamp;
+   }
    public long getTimestamp() {
       return timestamp;
    }

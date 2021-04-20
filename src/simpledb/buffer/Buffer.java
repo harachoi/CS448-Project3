@@ -2,6 +2,7 @@ package simpledb.buffer;
 
 import simpledb.file.*;
 import simpledb.log.LogMgr;
+import simpledb.tx.concurrency.LockAbortException;
 
 /**
  * An individual buffer. A databuffer wraps a page 

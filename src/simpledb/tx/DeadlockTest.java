@@ -7,6 +7,9 @@ import simpledb.log.LogMgr;
 import simpledb.server.SimpleDB;
 import simpledb.tx.concurrency.*;
 
+import java.io.File;
+import java.io.IOException;
+
 public class DeadlockTest {
     private static final String PADDING = "\t\t\t\t\t";
 
@@ -14,15 +17,34 @@ public class DeadlockTest {
     private static LogMgr lm;
     private static BufferMgr bm;
 
-    public static void main(String[] args) {
+    public static void delete(File f) throws IOException {
+        if (!f.exists())
+            return;
+        if (f.isDirectory()) {
+            for (File ff : f.listFiles())
+                delete(ff);
+        }
+        if (!f.delete()) {
+            System.out.println("not deleted");
+            throw new IOException();
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+        Transaction.VERBOSE = false;
+        LockTableTimeout.MAX_TIME = 1000;
         //initialize the database system
         SimpleDB db = new SimpleDB("deadlocktest", 400, 8);
         fm = db.fileMgr();
         lm = db.logMgr();
         bm = db.bufferMgr();
         ConcurrencyMgr.locktbl = new LockTableWoundWait();
-        new Thread(new T1()).start();
-        new Thread(new T2()).start();
+        Thread t1 = new Thread(new T1());
+        Thread t2 = new Thread(new T2());
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
     }
 
     static class T1 implements Runnable {
@@ -37,23 +59,21 @@ public class DeadlockTest {
             Thread.sleep(1000);
             System.out.println("T1: lock-X(A)");
             t1.setInt(A, 0, 0, false);
-            System.out.println("T1: commit");
             t1.commit();
+            System.out.println("T1: commit");
         }
         @Override
         public void run() {
             Transaction t1 = new Transaction(fm, lm, bm);
             t1.setThread(Thread.currentThread());
             t1.setTask((t) -> {
-                while (true) {
-                    try {
-                        doTask(t);
-                        break;
-                    } catch (InterruptedException | LockAbortException e) {
-                        // aborted
-                        System.out.println("T1: rollback");
-                        t.rollback();
-                    }
+                try {
+                    doTask(t);
+                } catch (InterruptedException | LockAbortException e) {
+                    // aborted
+                    System.out.println("T1: rollback");
+                    t1.releaseAll();
+                    new Thread(new T1()).start();
                 }
             });
             t1.runTask();
@@ -71,8 +91,8 @@ public class DeadlockTest {
             t2.getInt(A, 0);
             System.out.println(PADDING + "T2: lock-S(B)");
             t2.getInt(B, 0);
-            System.out.println(PADDING + "T2: commit");
             t2.commit();
+            System.out.println(PADDING + "T2: commit");
         }
 
         @Override
@@ -80,15 +100,13 @@ public class DeadlockTest {
             Transaction t2 = new Transaction(fm, lm, bm);
             t2.setThread(Thread.currentThread());
             t2.setTask((t) -> {
-                while (true) {
-                    try {
-                        doTask(t);
-                        break;
-                    } catch (InterruptedException | LockAbortException e) {
-                        // aborted
-                        System.out.println(PADDING + "T2: rollback");
-                        t.rollback();
-                    }
+                try {
+                    doTask(t);
+                } catch (InterruptedException | LockAbortException e) {
+                    // aborted
+                    System.out.println(PADDING + "T2: rollback");
+                    t2.releaseAll();
+                    new Thread(new T2()).start();
                 }
             });
             t2.runTask();

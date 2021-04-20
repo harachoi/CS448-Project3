@@ -82,7 +82,13 @@ abstract class LockTable {
 
       if (!entry.granted) {
          try {
-            handleIncompatible(transaction, currentlyHolding(blk), entry);
+            Transaction current = currentlyHolding(blk);
+            if (current.equals(transaction)) {
+               upgrade(blk, transaction);
+               return;
+            }
+
+            handleIncompatible(transaction, current, entry);
          } catch (InterruptedException e) {
             throw new LockAbortException();
          }
@@ -99,6 +105,7 @@ abstract class LockTable {
     * @param blk a reference to the disk block
     */
    synchronized void unlock(Transaction transaction, BlockId blk) {
+//      System.out.println(transaction.txnum + " unlock " + blk.number());
       handleUnlock(transaction);
       Iterator<LockEntry> it = locks.get(blk).iterator();
       while (it.hasNext()) {
@@ -115,6 +122,15 @@ abstract class LockTable {
                locks.get(blk).peekFirst().granted = true;
                notifyAll();
             }
+         }
+      }
+   }
+
+   synchronized public void upgrade(BlockId blk, Transaction transaction) {
+      for (LockEntry entry : locks.get(blk)) {
+         if (entry.transaction.equals(transaction) && entry.lockType == LockType.SHARED) {
+            entry.lockType = LockType.EXCLUSIVE;
+            return;
          }
       }
    }

@@ -1,5 +1,7 @@
 package simpledb.file;
 
+import simpledb.tx.concurrency.LockAbortException;
+
 import java.io.*;
 import java.util.*;
 
@@ -39,10 +41,12 @@ public class FileMgr {
       try {
          RandomAccessFile f = getFile(blk.fileName());
          f.seek(blk.number() * blocksize);
+         if (Thread.currentThread().isInterrupted())
+            throw new LockAbortException();
          f.getChannel().write(p.contents());
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot write block" + blk);
+         throw new RuntimeException("cannot write block " + e);
       }
    }
 

@@ -29,6 +29,7 @@ public class ConcurrencyMgr {
     */
    public void sLock(Transaction transaction, BlockId blk) {
       if (locks.get(blk) == null) {
+//         System.out.println(transaction.txnum + " lock-S on " + blk.number());
          locks.put(blk, "S");
          locktbl.sLock(transaction, blk);
       }
@@ -43,7 +44,7 @@ public class ConcurrencyMgr {
     */
    public void xLock(Transaction transaction, BlockId blk) {
       if (!hasXLock(blk)) {
-//         sLock(transaction, blk);
+//         System.out.println(transaction.txnum + " lock-X on " + blk.number());
          locks.put(blk, "X");
          locktbl.xLock(transaction, blk);
       }
