@@ -5,7 +5,13 @@ import java.util.*;
 import simpledb.file.BlockId;
 import simpledb.tx.Transaction;
 
-abstract class LockTable {
+public abstract class LockTable {
+   public enum LockTableType {
+      TIMEOUT,
+      WAIT_DIE,
+      WOUND_WAIT,
+      GRAPH
+   };
    enum LockType {
       UNLOCKED,
       SHARED,
@@ -31,7 +37,25 @@ abstract class LockTable {
                  '}';
       }
    }
-   
+
+   public static LockTable getLockTable(LockTableType type) {
+      switch (type) {
+         case TIMEOUT: {
+            return new LockTableTimeout();
+         }
+         case WAIT_DIE: {
+            return new LockTableWaitDie();
+         }
+         case WOUND_WAIT: {
+            return new LockTableWoundWait();
+         }
+         case GRAPH: {
+            return new LockTableGraph();
+         }
+      }
+      return new LockTableTimeout();
+   }
+
    protected Map<BlockId,LinkedList<LockEntry>> locks = new HashMap<>();
 
    // initialize data items, used for tree protocol

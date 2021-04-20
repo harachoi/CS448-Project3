@@ -16,12 +16,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Part1Test1 {
-    enum LockTableType {
-        TIMEOUT,
-        WAIT_DIE,
-        WOUND_WAIT,
-        GRAPH
-    };
 
     public static FileMgr fm;
     public static LogMgr lm;
@@ -65,7 +59,7 @@ public class Part1Test1 {
         timer = System.currentTimeMillis();
     }
 
-    public static long runTest(LockTableType type) throws InterruptedException, IOException {
+    public static long runTest(LockTable.LockTableType type) throws InterruptedException, IOException {
         String filename = FILE_NAME + "-" + type;
         if (new File(filename).exists()) {
             delete(new File(filename));
@@ -131,7 +125,7 @@ public class Part1Test1 {
             for (int j = 0; j < BLOCKS + 1; j++) {
                 randTime.add((int)(Math.random() * RANDOM_WRITE_MAX));
             }
-            for (LockTableType type : LockTableType.values()) {
+            for (LockTable.LockTableType type : LockTable.LockTableType.values()) {
                 System.out.println("running " + type + ", blocks: " + BLOCKS);
 
                 long totalTime = 0;
