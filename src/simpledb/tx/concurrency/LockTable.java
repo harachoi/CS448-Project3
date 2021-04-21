@@ -1,11 +1,14 @@
 package simpledb.tx.concurrency;
 
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 import simpledb.file.BlockId;
 import simpledb.tx.Transaction;
 
 public abstract class LockTable {
+   public static boolean VERBOSE = false;
+
    public enum LockTableType {
       TIMEOUT,
       WAIT_DIE,
@@ -72,20 +75,25 @@ public abstract class LockTable {
     * @param blk a reference to the disk block
     */
    public synchronized void sLock(Transaction transaction, BlockId blk) {
+      if (VERBOSE)
+         System.out.println(transaction.txnum + " request lock-S on " + blk);
       if (!locks.containsKey(blk)) {
          locks.put(blk, new LinkedList<>());
       }
-      LockEntry entry = new LockEntry(transaction, LockType.SHARED, compatible(blk, LockType.SHARED));
+      LockEntry holding = currentlyHolding(blk);
+
+      LockEntry entry = new LockEntry(transaction, LockType.SHARED, compatible(holding, LockType.SHARED));
       locks.get(blk).add(entry);
 
       if (!entry.granted) {
          try {
-            handleIncompatible(transaction, currentlyHolding(blk), entry);
+            handleIncompatible(transaction, holding.transaction, entry);
          } catch (InterruptedException e) {
             throw new LockAbortException();
          }
       }
-      System.out.println(transaction.txnum + " lock-S on " + blk.number());
+      if (VERBOSE)
+         System.out.println(transaction.txnum + " got lock-S on " + blk);
    }
    
    /**
@@ -99,27 +107,29 @@ public abstract class LockTable {
     * @param blk a reference to the disk block
     */
    synchronized void xLock(Transaction transaction, BlockId blk) {
+      if (VERBOSE)
+         System.out.println(transaction.txnum + " request lock-X on " + blk);
       if (!locks.containsKey(blk)) {
          locks.put(blk, new LinkedList<>());
       }
-      LockEntry entry = new LockEntry(transaction, LockType.EXCLUSIVE, compatible(blk, LockType.EXCLUSIVE));
+      LockEntry holding = currentlyHolding(blk);
+
+      LockEntry entry = new LockEntry(transaction, LockType.EXCLUSIVE, compatible(holding, LockType.EXCLUSIVE));
       locks.get(blk).add(entry);
 
       if (!entry.granted) {
          try {
-            Transaction current = currentlyHolding(blk);
-            if (current.equals(transaction)) {
+            if (holding.transaction.equals(transaction) && holding.lockType == LockType.SHARED) {
                upgrade(blk, transaction);
-               System.out.println(transaction.txnum + " lock-X on " + blk.number());
-               return;
+            } else {
+               handleIncompatible(transaction, holding.transaction, entry);
             }
-
-            handleIncompatible(transaction, current, entry);
          } catch (InterruptedException e) {
             throw new LockAbortException();
          }
       }
-      System.out.println(transaction.txnum + " lock-X on " + blk.number());
+      if (VERBOSE)
+         System.out.println(transaction.txnum + " got lock-X on " + blk);
    }
 
    // when lock cannot be granted, this function is called
@@ -132,7 +142,8 @@ public abstract class LockTable {
     * @param blk a reference to the disk block
     */
    synchronized void unlock(Transaction transaction, BlockId blk) {
-      System.out.println(transaction.txnum + " unlock " + blk.number());
+      if (VERBOSE)
+         System.out.println(transaction.txnum + " unlock " + blk);
       handleUnlock(transaction);
       if (locks == null || locks.get(blk) == null)
          return;
@@ -148,7 +159,17 @@ public abstract class LockTable {
             }
             if (lockedIn(blk) == LockType.UNLOCKED) {
                // all lock entries are waiting, grant lock to first in queue
-               locks.get(blk).peekFirst().granted = true;
+               LockEntry first = locks.get(blk).peekFirst();
+               if (first.lockType == LockType.SHARED) {
+                  Iterator<LockEntry> it2 = locks.get(blk).iterator();
+                  while (it2.hasNext()) {
+                     LockEntry entry2 = it2.next();
+                     if (entry2.lockType == LockType.SHARED)
+                        entry2.granted = true;
+                  }
+               } else {
+                  first.granted = true;
+               }
                notifyAll();
             }
          }
@@ -176,25 +197,22 @@ public abstract class LockTable {
       return LockType.UNLOCKED;
    }
 
-   synchronized public Transaction currentlyHolding(BlockId blk) {
+   synchronized public LockEntry currentlyHolding(BlockId blk) {
       for (LockEntry entry : locks.get(blk)) {
          if (entry.granted)
-            return entry.transaction;
+            return entry;
       }
       return null;
    }
 
    // implements the compatibility matrix of S and X
-   synchronized public boolean compatible(BlockId blk, LockType lockType) {
-      LockType blkLock = lockedIn(blk);
-      // any lock compatible with no lock
-      if (blkLock == LockType.UNLOCKED)
+   synchronized public boolean compatible(LockEntry current, LockType type) {
+      if (current == null)
          return true;
-      // S compatible with S
-      if (lockType == LockType.SHARED && blkLock == LockType.SHARED) {
+      if (current.lockType == LockType.UNLOCKED)
+         return  true;
+      if (current.lockType == LockType.SHARED && type == LockType.SHARED)
          return true;
-      }
-      // otherwise not compatible
       return false;
    }
 

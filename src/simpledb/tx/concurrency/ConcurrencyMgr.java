@@ -53,8 +53,10 @@ public class ConcurrencyMgr {
     * unlock each one.
     */
    public void release(Transaction transaction) {
-      for (BlockId blk : locks.keySet()) 
-         locktbl.unlock(transaction, blk);
+      Iterator<BlockId> it = locks.keySet().iterator();
+      while (it.hasNext()) {
+         locktbl.unlock(transaction, it.next());
+      }
       locks.clear();
    }
 

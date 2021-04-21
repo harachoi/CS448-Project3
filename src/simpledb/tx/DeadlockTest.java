@@ -39,12 +39,8 @@ public class DeadlockTest {
         lm = db.logMgr();
         bm = db.bufferMgr();
         ConcurrencyMgr.locktbl = new LockTableWoundWait();
-        Thread t1 = new Thread(new T1());
-        Thread t2 = new Thread(new T2());
-        t1.start();
-        t2.start();
-        t1.join();
-        t2.join();
+        new Thread(new T1()).start();
+        new Thread(new T2()).start();
     }
 
     static class T1 implements Runnable {
@@ -58,7 +54,9 @@ public class DeadlockTest {
             t1.setInt(B, 0, 0, false);
             Thread.sleep(1000);
             System.out.println("T1: lock-X(A)");
+            Thread.sleep(1);
             t1.setInt(A, 0, 0, false);
+            Thread.sleep(1);
             t1.commit();
             System.out.println("T1: commit");
         }
@@ -89,8 +87,10 @@ public class DeadlockTest {
             Thread.sleep(50);
             System.out.println(PADDING + "T2: lock-S(A)");
             t2.getInt(A, 0);
+            Thread.sleep(1);
             System.out.println(PADDING + "T2: lock-S(B)");
             t2.getInt(B, 0);
+            Thread.sleep(1);
             t2.commit();
             System.out.println(PADDING + "T2: commit");
         }

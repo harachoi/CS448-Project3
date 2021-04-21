@@ -84,8 +84,9 @@ public class Transaction {
    }
 
    public void abort() {
-      rollbackTime = System.currentTimeMillis();
+      System.out.println(txnum + " aborted xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
       this.thread.interrupt();
+      rollbackTime = System.currentTimeMillis();
    }
 
    public void releaseAll() {
