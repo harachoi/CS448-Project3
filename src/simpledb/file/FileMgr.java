@@ -41,8 +41,6 @@ public class FileMgr {
       try {
          RandomAccessFile f = getFile(blk.fileName());
          f.seek(blk.number() * blocksize);
-         if (Thread.currentThread().isInterrupted())
-            throw new LockAbortException();
          f.getChannel().write(p.contents());
       }
       catch (IOException e) {

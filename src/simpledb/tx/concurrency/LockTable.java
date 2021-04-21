@@ -85,6 +85,7 @@ public abstract class LockTable {
             throw new LockAbortException();
          }
       }
+      System.out.println(transaction.txnum + " lock-S on " + blk.number());
    }
    
    /**
@@ -109,6 +110,7 @@ public abstract class LockTable {
             Transaction current = currentlyHolding(blk);
             if (current.equals(transaction)) {
                upgrade(blk, transaction);
+               System.out.println(transaction.txnum + " lock-X on " + blk.number());
                return;
             }
 
@@ -117,6 +119,7 @@ public abstract class LockTable {
             throw new LockAbortException();
          }
       }
+      System.out.println(transaction.txnum + " lock-X on " + blk.number());
    }
 
    // when lock cannot be granted, this function is called
@@ -129,8 +132,10 @@ public abstract class LockTable {
     * @param blk a reference to the disk block
     */
    synchronized void unlock(Transaction transaction, BlockId blk) {
-//      System.out.println(transaction.txnum + " unlock " + blk.number());
+      System.out.println(transaction.txnum + " unlock " + blk.number());
       handleUnlock(transaction);
+      if (locks == null || locks.get(blk) == null)
+         return;
       Iterator<LockEntry> it = locks.get(blk).iterator();
       while (it.hasNext()) {
          LockEntry entry = it.next();

@@ -76,8 +76,6 @@ public class Transaction {
     * release all locks, and unpin any pinned buffers.
     */
    public void commit() {
-      if (Thread.currentThread().isInterrupted())
-         throw new LockAbortException();
       recoveryMgr.commit();
       if (VERBOSE)
          System.out.println("transaction " + txnum + " committed");

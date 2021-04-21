@@ -35,8 +35,6 @@ public class RecoveryMgr {
     * Write a commit record to the log, and flushes it to disk.
     */
    public void commit() {
-      if (Thread.currentThread().isInterrupted())
-         throw new LockAbortException();
       bm.flushAll(txnum);
       int lsn = CommitRecord.writeToLog(lm, txnum);
       lm.flush(lsn);
