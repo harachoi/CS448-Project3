@@ -80,7 +80,7 @@ public abstract class LockTable {
       if (!locks.containsKey(blk)) {
          locks.put(blk, new LinkedList<>());
       }
-      LockEntry holding = currentlyHolding(blk);
+      List<LockEntry> holding = currentlyHolding(blk);
 
       LockEntry entry = new LockEntry(transaction, LockType.SHARED, compatible(holding, LockType.SHARED));
       locks.get(blk).add(entry);
@@ -112,7 +112,7 @@ public abstract class LockTable {
       if (!locks.containsKey(blk)) {
          locks.put(blk, new LinkedList<>());
       }
-      LockEntry holding = currentlyHolding(blk);
+      List<LockEntry> holding = currentlyHolding(blk);
 
       LockEntry entry = new LockEntry(transaction, LockType.EXCLUSIVE, compatible(holding, LockType.EXCLUSIVE));
       locks.get(blk).add(entry);
@@ -120,7 +120,7 @@ public abstract class LockTable {
       if (!entry.granted) {
          try {
             if (holding.transaction.equals(transaction) && holding.lockType == LockType.SHARED) {
-               upgrade(blk, transaction);
+               holding.lockType = LockType.EXCLUSIVE;
             } else {
                handleIncompatible(transaction, holding.transaction, entry);
             }
@@ -176,15 +176,6 @@ public abstract class LockTable {
       }
    }
 
-   synchronized public void upgrade(BlockId blk, Transaction transaction) {
-      for (LockEntry entry : locks.get(blk)) {
-         if (entry.transaction.equals(transaction) && entry.lockType == LockType.SHARED) {
-            entry.lockType = LockType.EXCLUSIVE;
-            return;
-         }
-      }
-   }
-
    abstract void handleUnlock(Transaction transaction);
 
    synchronized public LockType lockedIn(BlockId blk) {
@@ -197,22 +188,25 @@ public abstract class LockTable {
       return LockType.UNLOCKED;
    }
 
-   synchronized public LockEntry currentlyHolding(BlockId blk) {
+   synchronized public List<LockEntry> currentlyHolding(BlockId blk) {
+      List<LockEntry> result = new ArrayList<>();
       for (LockEntry entry : locks.get(blk)) {
          if (entry.granted)
-            return entry;
+            result.add(entry);
       }
-      return null;
+      return result;
    }
 
    // implements the compatibility matrix of S and X
-   synchronized public boolean compatible(LockEntry current, LockType type) {
-      if (current == null)
-         return true;
-      if (current.lockType == LockType.UNLOCKED)
-         return  true;
-      if (current.lockType == LockType.SHARED && type == LockType.SHARED)
-         return true;
+   synchronized public boolean compatible(List<LockEntry> current, LockType type) {
+      for (LockEntry entry : current) {
+         if (current == null)
+            continue;
+         if (entry.lockType == LockType.UNLOCKED)
+            continue;
+         if (entry.lockType == LockType.SHARED && type == LockType.SHARED)
+            continue;
+      }
       return false;
    }
 

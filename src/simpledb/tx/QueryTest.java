@@ -16,12 +16,12 @@ public class QueryTest {
     public static SimpleDB db;
     public static String DIR_NAME = "querytest1";
 
-    public static int RECORDS = 3;
+    public static int RECORDS = 25;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         SimpleDB.BUFFER_SIZE = 100;
         SimpleDB.BLOCK_SIZE = 400;
-        LockTable.VERBOSE = true;
+        LockTable.VERBOSE = false;
         Transaction.VERBOSE = true;
         LockTableTimeout.MAX_TIME = 1000;
 
@@ -56,7 +56,7 @@ public class QueryTest {
         String cmd = "create table T1(A int, B varchar(9))";
         planner.executeUpdate(cmd, tx);
         for (int i=0; i<RECORDS; i++) {
-            int a = i;
+            int a = i + 1;
             String b = "bbb"+a;
             cmd = "insert into T1(A,B) values(" + a + ", '"+ b + "')";
             planner.executeUpdate(cmd, tx);
