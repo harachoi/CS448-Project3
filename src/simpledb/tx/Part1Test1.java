@@ -82,10 +82,10 @@ public class Part1Test1 {
                 ConcurrencyMgr.locktbl = new LockTableWoundWait();
                 break;
             }
-            case GRAPH: {
-                ConcurrencyMgr.locktbl = new LockTableGraph();
-                break;
-            }
+//            case GRAPH: {
+//                ConcurrencyMgr.locktbl = new LockTableGraph();
+//                break;
+//            }
         }
 
         Thread[] threads = new Thread[BLOCKS + 1];

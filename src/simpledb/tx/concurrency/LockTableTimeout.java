@@ -2,6 +2,9 @@ package simpledb.tx.concurrency;
 
 import simpledb.tx.Transaction;
 
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+
 public class LockTableTimeout extends LockTable {
     public static long MAX_TIME = 5000; // 5 seconds
 
@@ -11,7 +14,7 @@ public class LockTableTimeout extends LockTable {
     }
 
     @Override
-    synchronized void handleIncompatible(Transaction waiting, Transaction holding, LockEntry entry) throws InterruptedException{
+    synchronized void handleIncompatible(Transaction waiting, List<LockEntry> holding, LockEntry entry) throws InterruptedException{
         long timestamp = System.currentTimeMillis();
         while (!entry.granted && !waitingTooLong(timestamp))
             wait(MAX_TIME);

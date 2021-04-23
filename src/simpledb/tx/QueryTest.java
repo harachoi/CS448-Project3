@@ -16,7 +16,9 @@ public class QueryTest {
     public static SimpleDB db;
     public static String DIR_NAME = "querytest1";
 
-    public static int RECORDS = 25;
+    public static int RECORDS = 1000;
+
+    public static Object lock;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         SimpleDB.BUFFER_SIZE = 100;
@@ -25,7 +27,7 @@ public class QueryTest {
         Transaction.VERBOSE = true;
         LockTableTimeout.MAX_TIME = 1000;
 
-        runTest(LockTable.LockTableType.TIMEOUT);
+        runTest(LockTable.LockTableType.WAIT_DIE);
     }
 
     public static void delete(File f) throws IOException {
@@ -67,10 +69,12 @@ public class QueryTest {
         Thread[] threads = new Thread[RECORDS + 1];
         threads[0] = new Thread(new T1());
         for (int i = 0; i < RECORDS; i++) {
-            threads[i + 1] = new Thread(new T2(i + 1));
+            int r = (int)(RECORDS * Math.random() + 1);
+            threads[i + 1] = new Thread(new T2(r));
         }
 
         for (int i = 0; i < RECORDS + 1; i++) {
+            Thread.sleep(10);
             threads[i].start();
         }
         for (int i = 0; i < RECORDS + 1; i++) {
@@ -96,21 +100,24 @@ public class QueryTest {
                 Thread.sleep(1);
                 Scan s = p.open();
                 while (s.next()) {
-                    Thread.sleep(1);
-//                    System.out.println(s.getString("b"));
-                    s.getString("b");
+                    Thread.sleep(10);
+                    System.out.println(s.getString("b"));
+//                    s.getString("b");
                 }
                 Thread.sleep(1);
                 s.close();
                 Thread.sleep(1);
                 tx2.commit();
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                if (!(ex instanceof InterruptedException || ex instanceof LockAbortException))
+//                    ex.printStackTrace();
 
                 tx2.releaseAll();
                 Thread t1 = new Thread(new T1());
-                t1.start();
                 try {
+                    System.out.println("restarting " + tx2.txnum);
+                    Thread.sleep(10);
+                    t1.start();
                     t1.join();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -138,11 +145,15 @@ public class QueryTest {
                 Thread.sleep(1);
                 tx3.commit();
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                if (!(ex instanceof InterruptedException || ex instanceof LockAbortException))
+//                    ex.printStackTrace();
+
                 tx3.releaseAll();
                 Thread t2 = new Thread(new T2(a));
-                t2.start();
                 try {
+                    System.out.println("restarting " + tx3.txnum);
+                    Thread.sleep(100);
+                    t2.start();
                     t2.join();
                 } catch (InterruptedException e) {
                     e.printStackTrace();

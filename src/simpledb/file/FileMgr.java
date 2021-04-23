@@ -33,7 +33,7 @@ public class FileMgr {
          f.getChannel().read(p.contents());
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot read block " + blk);
+         throw new RuntimeException("cannot read block " + blk + " " + e);
       }
    }
 

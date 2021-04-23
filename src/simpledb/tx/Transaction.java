@@ -52,6 +52,7 @@ public class Transaction {
       concurMgr   = new ConcurrencyMgr();
       mybuffers = new BufferList(bm);
       this.timestamp = System.currentTimeMillis();
+      this.thread = Thread.currentThread();
    }
 
    public void setThread(Thread thread) {
@@ -265,5 +266,12 @@ public class Transaction {
    private static synchronized int nextTxNumber() {
       nextTxNum++;
       return nextTxNum;
+   }
+
+   @Override
+   public String toString() {
+      return "Transaction{" +
+              "txnum=" + txnum +
+              '}';
    }
 }

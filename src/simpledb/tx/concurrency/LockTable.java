@@ -6,6 +6,8 @@ import java.util.concurrent.locks.Lock;
 import simpledb.file.BlockId;
 import simpledb.tx.Transaction;
 
+import javax.swing.text.html.parser.Entity;
+
 public abstract class LockTable {
    public static boolean VERBOSE = false;
 
@@ -52,9 +54,9 @@ public abstract class LockTable {
          case WOUND_WAIT: {
             return new LockTableWoundWait();
          }
-         case GRAPH: {
-            return new LockTableGraph();
-         }
+//         case GRAPH: {
+//            return new LockTableGraph();
+//         }
       }
       return new LockTableTimeout();
    }
@@ -81,13 +83,19 @@ public abstract class LockTable {
          locks.put(blk, new LinkedList<>());
       }
       List<LockEntry> holding = currentlyHolding(blk);
+      LockEntry downgradeEntry = canDowngrade(holding, transaction);
+//      if (downgradeEntry != null) {
+//         downgradeEntry.lockType =
+//      }
 
       LockEntry entry = new LockEntry(transaction, LockType.SHARED, compatible(holding, LockType.SHARED));
       locks.get(blk).add(entry);
 
       if (!entry.granted) {
          try {
-            handleIncompatible(transaction, holding.transaction, entry);
+            if (VERBOSE)
+               System.out.println("conflict S " + transaction.txnum + " " + holding);
+            handleIncompatible(transaction, holding, entry);
          } catch (InterruptedException e) {
             throw new LockAbortException();
          }
@@ -113,17 +121,20 @@ public abstract class LockTable {
          locks.put(blk, new LinkedList<>());
       }
       List<LockEntry> holding = currentlyHolding(blk);
+      LockEntry upgradeEntry = canUpgrade(holding, transaction);
+      if (upgradeEntry != null) {
+         upgradeEntry.lockType = LockType.EXCLUSIVE;
+         return;
+      }
 
       LockEntry entry = new LockEntry(transaction, LockType.EXCLUSIVE, compatible(holding, LockType.EXCLUSIVE));
       locks.get(blk).add(entry);
 
       if (!entry.granted) {
          try {
-            if (holding.transaction.equals(transaction) && holding.lockType == LockType.SHARED) {
-               holding.lockType = LockType.EXCLUSIVE;
-            } else {
-               handleIncompatible(transaction, holding.transaction, entry);
-            }
+            if (VERBOSE)
+               System.out.println("conflict X " + transaction.txnum + " " + holding);
+            handleIncompatible(transaction, holding, entry);
          } catch (InterruptedException e) {
             throw new LockAbortException();
          }
@@ -133,7 +144,7 @@ public abstract class LockTable {
    }
 
    // when lock cannot be granted, this function is called
-   abstract void handleIncompatible(Transaction waiting, Transaction holding, LockEntry entry) throws InterruptedException;
+   abstract void handleIncompatible(Transaction waiting, List<LockEntry> holding, LockEntry entry) throws InterruptedException;
    
    /**
     * Release a lock on the specified block.
@@ -199,16 +210,37 @@ public abstract class LockTable {
 
    // implements the compatibility matrix of S and X
    synchronized public boolean compatible(List<LockEntry> current, LockType type) {
+      if (current == null)
+         return true;
       for (LockEntry entry : current) {
-         if (current == null)
-            continue;
          if (entry.lockType == LockType.UNLOCKED)
             continue;
          if (entry.lockType == LockType.SHARED && type == LockType.SHARED)
             continue;
+         if (entry.lockType == LockType.EXCLUSIVE)
+            return false;
       }
-      return false;
+      return true;
    }
 
+   synchronized public LockEntry canUpgrade(List<LockEntry> holding, Transaction transaction) {
+      /**
+       * if there are only 1 slock, upgrade is possible
+       */
+      List<LockEntry> slocks = new ArrayList<>();
+      for (LockEntry entry : holding) {
+         if (entry.lockType == LockType.SHARED)
+            slocks.add(entry);
+      }
+      if (slocks.size() != 1 || !slocks.get(0).equals(transaction))
+         return null;
+      return slocks.get(0);
+   }
 
+   synchronized public LockEntry canDowngrade(List<LockEntry> holding, Transaction transaction) {
+      /**
+       * if transaction has an x lock, upgrade is possible
+       */
+      return (holding.size() == 1 && holding.get(0).equals(transaction)) ? holding.get(0) : null;
+   }
 }

@@ -50,7 +50,7 @@ public class LockTableTree extends LockTable {
     }
 
     @Override
-    void handleIncompatible(Transaction waiting, Transaction holding, LockEntry entry) throws InterruptedException {
+    void handleIncompatible(Transaction waiting, List<LockEntry> holding, LockEntry entry) throws InterruptedException {
 
     }
 
